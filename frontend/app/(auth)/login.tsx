@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Platform,
 } from 'react-native';
@@ -19,13 +18,47 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const { setUser, setAuthenticated, isAuthenticated, isLoading } = useAuthStore();
-  const redirectUri = AuthSession.makeRedirectUri({ scheme: 'schoolerp', path: 'auth/callback' });
+  const redirectUri = Platform.OS === 'web'
+    ? `${window.location.origin}/login`
+    : AuthSession.makeRedirectUri({ scheme: 'schoolerp', path: 'auth/callback' });
 
   useEffect(() => {
     if (isAuthenticated) {
       router.replace('/');
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    const refreshToken = params.get('refresh_token');
+
+    if (token && refreshToken) {
+      handleTokens(token, refreshToken);
+      window.history.replaceState({}, document.title, '/login');
+    }
+  }, []);
+
+  const handleTokens = async (token: string, refreshToken: string) => {
+    const payloadBase64 = token.split('.')[1];
+    const payload = JSON.parse(atob(payloadBase64));
+
+    const user = {
+      id: parseInt(payload.sub),
+      email: payload.email,
+      fullName: payload.email,
+      role: payload.role,
+      active: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    await authService.saveAuthData({ accessToken: token, refreshToken, tokenType: 'Bearer', expiresIn: 86400, user });
+    setUser(user as any);
+    setAuthenticated(true);
+    router.replace('/');
+  };
 
   const handleGoogleLogin = async () => {
     try {
@@ -40,23 +73,7 @@ export default function LoginScreen() {
         const refreshToken = params.get('refresh_token');
 
         if (token && refreshToken) {
-          // Decode user from token
-          const payloadBase64 = token.split('.')[1];
-          const payload = JSON.parse(atob(payloadBase64));
-
-          const user = {
-            id: parseInt(payload.sub),
-            email: payload.email,
-            fullName: payload.email,
-            role: payload.role,
-            active: true,
-            createdAt: new Date().toISOString(),
-          };
-
-          await authService.saveAuthData({ accessToken: token, refreshToken, tokenType: 'Bearer', expiresIn: 86400, user });
-          setUser(user as any);
-          setAuthenticated(true);
-          router.replace('/');
+          await handleTokens(token, refreshToken);
         }
       }
     } catch (err) {
@@ -73,10 +90,10 @@ export default function LoginScreen() {
   }
 
   return (
-    <View className="flex-1 bg-gradient-to-br from-blue-900 to-blue-700 items-center justify-center px-8">
+    <View className="flex-1 bg-blue-900 items-center justify-center px-6 py-10">
       {/* Logo / Header */}
-      <View className="items-center mb-12">
-        <View className="w-24 h-24 bg-white rounded-2xl items-center justify-center mb-6 shadow-2xl">
+      <View className="items-center mb-10">
+        <View className="w-24 h-24 bg-white rounded-2xl items-center justify-center mb-6 shadow-lg">
           <Text className="text-5xl">🏫</Text>
         </View>
         <Text className="text-white text-4xl font-bold tracking-tight">School ERP</Text>
@@ -84,13 +101,13 @@ export default function LoginScreen() {
       </View>
 
       {/* Login Card */}
-      <View className="w-full bg-white rounded-3xl p-8 shadow-2xl">
+      <View className="w-full bg-white rounded-2xl p-8 shadow-lg" style={{ maxWidth: 420 }}>
         <Text className="text-gray-800 text-2xl font-bold text-center mb-2">Welcome Back</Text>
         <Text className="text-gray-500 text-center mb-8">Sign in to continue</Text>
 
         <TouchableOpacity
           onPress={handleGoogleLogin}
-          className="flex-row items-center justify-center bg-white border-2 border-gray-200 rounded-xl py-4 px-6 mb-4"
+          className="w-full flex-row items-center justify-center bg-white border-2 border-gray-200 rounded-xl py-4 px-6 mb-4"
           style={{ elevation: 2 }}
         >
           <Text className="text-2xl mr-3">🔵</Text>

@@ -53,6 +53,6 @@ app:
     upload-dir: ${FILE_UPLOAD_DIR:./uploads}
   oauth2:
     authorized-redirect-uris:
-      - http://localhost:8081/auth/callback
+      - http://localhost:8081/login
       - exp://localhost:8081/auth/callback
       - schoolerp://auth/callback

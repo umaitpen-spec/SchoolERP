@@ -37,7 +37,7 @@ public class SecurityConfig {
     private static final String[] PUBLIC_URLS = {
         "/api/v1/auth/**",
         "/oauth2/**",
-        "/swagger-ui/**",
+        "/error",
         "/v3/api-docs/**",
         "/swagger-ui.html",
         "/actuator/health",
@@ -57,6 +57,9 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
+                .redirectionEndpoint(redirection -> redirection
+                    .baseUri("/api/v1/auth/oauth2/callback/*")
+                )
                 .userInfoEndpoint(userInfo -> userInfo.userService(oAuth2UserService))
                 .successHandler(oAuth2SuccessHandler)
             )
